@@ -10,21 +10,18 @@
 Classes to handle Carla vehicles
 """
 import math
-import os
 
 import numpy
 from carla import VehicleControl
-
-from ros_compatibility.qos import QoSProfile, DurabilityPolicy
-
-from carla_ros_bridge.vehicle import Vehicle
-
 from carla_msgs.msg import (
     CarlaEgoVehicleInfo,
     CarlaEgoVehicleInfoWheel,
     CarlaEgoVehicleControl,
     CarlaEgoVehicleStatus
 )
+from carla_ros_bridge.vehicle import Vehicle
+from geometry_msgs.msg import PoseStamped
+from ros_compatibility.qos import QoSProfile, DurabilityPolicy
 from std_msgs.msg import Bool  # pylint: disable=import-error
 from std_msgs.msg import ColorRGBA  # pylint: disable=import-error
 
@@ -76,6 +73,12 @@ class EgoVehicle(Vehicle):
             lambda data: self.control_command_updated(data, manual_override=False),
             qos_profile=10)
 
+        self.ego_location_publisher = node.new_publisher(
+            PoseStamped,
+            self.get_topic_prefix() + "/vehicle_location",
+            qos_profile=10
+        )
+
         self.manual_control_subscriber = node.new_subscription(
             CarlaEgoVehicleControl,
             self.get_topic_prefix() + "/vehicle_control_cmd_manual",
@@ -109,6 +112,34 @@ class EgoVehicle(Vehicle):
         color.b = 0.0
         return color
 
+    # ! /usr/bin/env python3
+
+    # This program converts Euler angles to a quaternion.
+    # Author: AutomaticAddison.com
+
+    def get_quaternion_from_euler(self,roll, pitch, yaw):
+        """
+        Convert an Euler angle to a quaternion.
+
+        Input
+          :param roll: The roll (rotation around x-axis) angle in radians.
+          :param pitch: The pitch (rotation around y-axis) angle in radians.
+          :param yaw: The yaw (rotation around z-axis) angle in radians.
+
+        Output
+          :return qx, qy, qz, qw: The orientation in quaternion [x,y,z,w] format
+        """
+        qx = numpy.sin(roll / 2) * numpy.cos(pitch / 2) * numpy.cos(yaw / 2) - numpy.cos(roll / 2) * numpy.sin(pitch / 2) * numpy.sin(
+            yaw / 2)
+        qy = numpy.cos(roll / 2) * numpy.sin(pitch / 2) * numpy.cos(yaw / 2) + numpy.sin(roll / 2) * numpy.cos(pitch / 2) * numpy.sin(
+            yaw / 2)
+        qz = numpy.cos(roll / 2) * numpy.cos(pitch / 2) * numpy.sin(yaw / 2) - numpy.sin(roll / 2) * numpy.sin(pitch / 2) * numpy.cos(
+            yaw / 2)
+        qw = numpy.cos(roll / 2) * numpy.cos(pitch / 2) * numpy.cos(yaw / 2) + numpy.sin(roll / 2) * numpy.sin(pitch / 2) * numpy.sin(
+            yaw / 2)
+
+        return qx, qy, qz, qw
+
     def send_vehicle_msgs(self, frame, timestamp):
         """
         send messages related to vehicle status
@@ -128,6 +159,15 @@ class EgoVehicle(Vehicle):
         vehicle_status.control.gear = self.carla_actor.get_control().gear
         vehicle_status.control.manual_gear_shift = self.carla_actor.get_control().manual_gear_shift
         self.vehicle_status_publisher.publish(vehicle_status)
+
+        ego_loc = PoseStamped(header=self.get_msg_header("map", timestamp=timestamp))
+        ego_transform = self.carla_actor.get_transform()
+        ego_loc.pose.position.x = ego_transform.location.x
+        ego_loc.pose.position.y = ego_transform.location.y
+        ego_loc.pose.position.z = ego_transform.location.z
+        ego_loc.pose.orientation.x, ego_loc.pose.orientation.y,  ego_loc.pose.orientation.z, ego_loc.pose.orientation.w = self.get_quaternion_from_euler(ego_transform.rotation.x, ego_transform.rotation.y, ego_transform.rotation.z)
+        self.ego_location_publisher.publish(ego_loc)
+
 
         # only send vehicle once (in latched-mode)
         if not self.vehicle_info_published:

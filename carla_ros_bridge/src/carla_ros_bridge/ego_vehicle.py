@@ -24,7 +24,7 @@ from geometry_msgs.msg import PoseStamped
 from ros_compatibility.qos import QoSProfile, DurabilityPolicy
 from std_msgs.msg import Bool  # pylint: disable=import-error
 from std_msgs.msg import ColorRGBA  # pylint: disable=import-error
-
+from scipy.spatial.transform import Rotation
 
 class EgoVehicle(Vehicle):
 
@@ -165,7 +165,16 @@ class EgoVehicle(Vehicle):
         ego_loc.pose.position.x = ego_transform.location.x
         ego_loc.pose.position.y = ego_transform.location.y
         ego_loc.pose.position.z = ego_transform.location.z
-        ego_loc.pose.orientation.x, ego_loc.pose.orientation.y,  ego_loc.pose.orientation.z, ego_loc.pose.orientation.w = self.get_quaternion_from_euler(ego_transform.rotation.x, ego_transform.rotation.y, ego_transform.rotation.z)
+        cy = math.cos(ego_transform.rotation.yaw * 0.5)
+        sy = math.sin(ego_transform.rotation.yaw * 0.5)
+        cp = math.cos(0)
+        sp = math.sin(0)
+        cr = math.cos(0)
+        sr = math.sin(0)
+
+        ego_loc.pose.orientation = self.get_current_ros_pose().orientation
+
+        # ego_loc.pose.orientation.x, ego_loc.pose.orientation.y,  ego_loc.pose.orientation.z, ego_loc.pose.orientation.w = self.get_quaternion_from_euler(ego_transform.rotation.roll, ego_transform.rotation.pitch, ego_transform.rotation.yaw)
         self.ego_location_publisher.publish(ego_loc)
 
 

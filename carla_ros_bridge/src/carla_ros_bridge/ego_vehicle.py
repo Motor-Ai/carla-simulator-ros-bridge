@@ -198,6 +198,7 @@ class EgoVehicle(Vehicle):
         canbus_msg = Canbus(
             header=self.get_msg_header("map", timestamp=timestamp),
             steering=vehicle_status.control.steer,
+            throttle=vehicle_status.control.throttle,
             speed=vehicle_status.velocity,
             brake=vehicle_status.control.brake,
             accel=vehicle_status.acceleration.linear.x,

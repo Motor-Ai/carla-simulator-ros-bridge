@@ -62,7 +62,7 @@ except ImportError:
 
 import ros_compatibility as roscomp
 from ros_compatibility.node import CompatibleNode
-from ros_compatibility.qos import QoSProfile, DurabilityPolicy
+from ros_compatibility.qos import QoSProfile, DurabilityPolicy, QoSProfileSubscriber
 
 from carla_msgs.msg import CarlaStatus
 from carla_msgs.msg import CarlaEgoVehicleInfo
@@ -89,8 +89,10 @@ class ManualControl(CompatibleNode):
         super(ManualControl, self).__init__("ManualControl")
         self._surface = None
         self.role_name = self.get_param("role_name", "ego_vehicle")
+        self.control_priority = self.get_param("control_priority", 20)
+
         self.hud = HUD(self.role_name, resolution['width'], resolution['height'], self)
-        self.controller = KeyboardControl(self.role_name, self.hud, self)
+        self.controller = KeyboardControl(self.role_name, self.control_priority, self.hud, self)
 
         self.image_subscriber = self.new_subscription(
             Image, "/carla/{}/rgb_view/image".format(self.role_name),
@@ -163,22 +165,18 @@ class KeyboardControl(object):
     Handle input events
     """
 
-    def __init__(self, role_name, hud, node):
+    def __init__(self, role_name, control_priority, hud, node):
         self.role_name = role_name
         self.hud = hud
         self.node = node
 
         self._autopilot_enabled = False
         self._control = CarlaEgoVehicleControl()
+        self._control.control_priority = control_priority
         self._steer_cache = 0.0
 
         fast_qos = QoSProfile(depth=10)
         fast_latched_qos = QoSProfile(depth=10, durability=DurabilityPolicy.TRANSIENT_LOCAL)
-
-        self.vehicle_control_manual_override_publisher = self.node.new_publisher(
-            Bool,
-            "/carla/{}/vehicle_control_manual_override".format(self.role_name),
-            qos_profile=fast_latched_qos)
 
         self.vehicle_control_manual_override = False
 
@@ -189,7 +187,7 @@ class KeyboardControl(object):
 
         self.vehicle_control_publisher = self.node.new_publisher(
             CarlaEgoVehicleControl,
-            "/carla/{}/vehicle_control_cmd_manual".format(self.role_name),
+            "/carla/{}/vehicle_control_cmd".format(self.role_name),
             qos_profile=fast_qos)
 
         self.carla_status_subscriber = self.node.new_subscription(
@@ -208,7 +206,7 @@ class KeyboardControl(object):
         Set the manual control override
         """
         self.hud.notification('Set vehicle control manual override to: {}'.format(enable))
-        self.vehicle_control_manual_override_publisher.publish((Bool(data=enable)))
+        self.hud.manual_control_override_updated(enable)
 
     def set_autopilot(self, enable):
         """
@@ -346,12 +344,6 @@ class HUD(object):
             qos_profile=10
         )
 
-        self.manual_control_subscriber = node.new_subscription(
-            Bool,
-            "/carla/{}/vehicle_control_manual_override".format(self.role_name),
-            self.manual_control_override_updated,
-            qos_profile=10)
-
         self.carla_status = CarlaStatus()
         self.status_subscriber = node.new_subscription(
             CarlaStatus,
@@ -376,7 +368,7 @@ class HUD(object):
         """
         Callback on vehicle status updates
         """
-        self.manual_control = data.data
+        self.manual_control = data
         self.update_info_text()
 
     def vehicle_status_updated(self, vehicle_status):
@@ -431,8 +423,8 @@ class HUD(object):
 
         time = str(datetime.timedelta(seconds=self.node.get_time()))[:10]
 
-        if self.carla_status.fixed_delta_seconds:
-            fps = 1 / self.carla_status.fixed_delta_seconds
+        if self.carla_status.episode_settings.fixed_delta_seconds:
+            fps = 1 / self.carla_status.episode_settings.fixed_delta_seconds
         self._info_text = [
             'Frame: % 22s' % self.carla_status.frame,
             'Simulation time: % 12s' % time,
@@ -445,20 +437,20 @@ class HUD(object):
             'Height:  % 18.0f m' % z, ''
         ]
         self._info_text += [
-            ('Throttle:', self.vehicle_status.control.throttle, 0.0, 1.0),
-            ('Steer:', self.vehicle_status.control.steer, -1.0, 1.0),
-            ('Brake:', self.vehicle_status.control.brake, 0.0, 1.0),
-            ('Reverse:', self.vehicle_status.control.reverse),
-            ('Hand brake:', self.vehicle_status.control.hand_brake),
-            ('Manual:', self.vehicle_status.control.manual_gear_shift),
+            ('Throttle:', self.vehicle_status.last_applied_vehicle_control.throttle, 0.0, 1.0),
+            ('Steer:', self.vehicle_status.last_applied_vehicle_control.steer, -1.0, 1.0),
+            ('Brake:', self.vehicle_status.last_applied_vehicle_control.brake, 0.0, 1.0),
+            ('Reverse:', self.vehicle_status.last_applied_vehicle_control.reverse),
+            ('Hand brake:', self.vehicle_status.last_applied_vehicle_control.hand_brake),
+            ('Manual:', self.vehicle_status.last_applied_vehicle_control.manual_gear_shift),
             'Gear:        %s' % {
                 -1: 'R',
                 0: 'N'
-            }.get(self.vehicle_status.control.gear, self.vehicle_status.control.gear), ''
+            }.get(self.vehicle_status.last_applied_vehicle_control.gear, self.vehicle_status.last_applied_vehicle_control.gear), ''
         ]
         self._info_text += [('Manual ctrl:', self.manual_control)]
-        if self.carla_status.synchronous_mode:
-            self._info_text += [('Sync mode running:', self.carla_status.synchronous_mode_running)]
+        if self.carla_status.episode_settings.synchronous_mode:
+            self._info_text += [('Sync mode running:', self.carla_status.episode_settings.synchronous_mode_running)]
         self._info_text += ['', '', 'Press <H> for help']
 
     def toggle_info(self):

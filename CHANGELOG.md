@@ -108,7 +108,7 @@
 *   rename gnss topic from '../gnss' to '../fix'
 *   Add lane invasion sensor
 *   Add collision sensor
-*   Rename CarlaEgoVehicleControl to CarlaEgoVehicleControl (and add some more message types)
+*   Rename CarlaVehicleControl to CarlaEgoVehicleControl (and add some more message types)
 *   move PID controller into separate ROS node
 *   Add challenge mode
 *   Split actor-monitoring + data publishing

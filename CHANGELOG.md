@@ -1,7 +1,7 @@
 ## Latest
 
 ## CARLA-ROS-Bridge 0.9.16-dev
-*   Apat to built-in ROS2 interface
+*   Adapt to built-in ROS2 interface
 *   Removed not required parts of the old ros-bridge implementation as those
     are covered by the ROS2 enabled CARLA server directly
 *   Added derived_objects_visualizer to replace /carla/markers published by
@@ -20,6 +20,8 @@
     - allow dynamic selection of vehicle to be controlled
 *   carla_twist_to_control:
     - allow setting control_priority
+*   Known issues:
+    - carla_manual_control: set_autopilot and lane_invastion sensor are not available yet in CARLA server since these are client based functions at the moment 
 
 ## CARLA-ROS-Bridge 0.9.12
 

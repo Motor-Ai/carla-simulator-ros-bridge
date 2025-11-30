@@ -1,4 +1,4 @@
-# Carla Manual Control
+# Derived Objects Visualizer
 
 The [CARLA derived objects visualizer package](https://github.com/carla-simulator/ros-bridge/tree/master/derived_objects_visualizer) is a ros node providing a marker_array topic for derived object with covariance topics e.g. from CARLA.
 

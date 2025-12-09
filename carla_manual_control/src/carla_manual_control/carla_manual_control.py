@@ -178,8 +178,9 @@ class KeyboardControl(object):
         fast_qos = QoSProfile(depth=10)
         fast_latched_qos = QoSProfile(depth=10, durability=DurabilityPolicy.TRANSIENT_LOCAL)
 
-        self.vehicle_control_manual_override = False
+        self.vehicle_control_manual_override = True
 
+        # todo: autopilot service not working yet with carla native ROS2 support
         self.auto_pilot_enable_publisher = self.node.new_publisher(
             Bool,
             "/carla/{}/enable_autopilot".format(self.role_name),
@@ -450,7 +451,7 @@ class HUD(object):
         ]
         self._info_text += [('Manual ctrl:', self.manual_control)]
         if self.carla_status.episode_settings.synchronous_mode:
-            self._info_text += [('Sync mode running:', self.carla_status.episode_settings.synchronous_mode_running)]
+            self._info_text += [('Sync mode running:', self.carla_status.episode_settings.synchronous_mode)]
         self._info_text += ['', '', 'Press <H> for help']
 
     def toggle_info(self):

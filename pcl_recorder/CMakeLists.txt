@@ -27,7 +27,7 @@ find_package(PCL REQUIRED COMPONENTS common io)
 
 include_directories(include ${PCL_INCLUDE_DIRS})
 
-add_executable(${PROJECT_NAME}_node src/PclRecorderROS2.cpp src/mainROS2.cpp)
+add_executable(${PROJECT_NAME}_node src/PclRecorder.cpp src/main.cpp)
 
 ament_target_dependencies(${PROJECT_NAME}_node rclcpp sensor_msgs
                           pcl_conversions tf2 tf2_ros tf2_eigen)

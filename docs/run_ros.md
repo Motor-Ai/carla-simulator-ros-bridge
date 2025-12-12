@@ -1,14 +1,14 @@
-# The ROS Bridge package
+# The CARLA ROS supporting packages
 
-The `carla_ros_bridge` package is not existing anymore since CARLA provide the ROS2 interfaces natively.
-Therefore this document is outdated!
+The original `carla_ros_bridge` package is not existing anymore since CARLA provides the ROS2 interfaces natively since version 0.9.16.
+Nevertheless the ROS2 supporting packages within this repository are still valid.
 
-Nevertheless, this section is kept to provide a general overview on the ROS interaction with CARLA and the packages within this repository supporting such.
+Therefore this document might be outdated to some extend. TODO: update it.
+
+This section is kept to provide a general overview on the ROS interaction with CARLA and the packages within this repository supporting such.
 You will learn how to prepare the ROS environment and how to configure the settings, usage of synchronous mode, controlling the ego vehicle and a summary of the subscriptions, publications and services available.
 
 - [__Setting the ROS environment__](#setting-the-ros-environment)
-    - [Prepare ROS 1 environment](#prepare-ros-1-environment)
-    - [Prepare ROS 2 environment](#prepare-ros-2-environment)
 - [__Running the ROS bridge__](#running-the-ros-bridge)
 - [__Configuring CARLA settings__](#configuring-carla-settings)
 - [__Using the ROS bridge in synchronous mode__](#using-the-ros-bridge-in-synchronous-mode)
@@ -21,21 +21,7 @@ You will learn how to prepare the ROS environment and how to configure the setti
 
 ## Setting the ROS environment
 
-The ROS bridge supports both ROS 1 and ROS 2 using separate implementations with a common interface. When you want to run the ROS bridge you will have to set your ROS environment according to your ROS version in every terminal that you use:
-
-#### Prepare ROS 1 environment:
-
-The command to run depends on whether you installed the ROS bridge via the Debian package or via the source build. You will also need to change the ROS version in the path for the Debian option:
-
-```sh
-    # For debian installation of ROS bridge. Change the command according to your installed version of ROS.
-    source /opt/carla-ros-bridge/<melodic/noetic>/setup.bash
-
-    # For GitHub repository installation of ROS bridge
-    source ~/carla-ros-bridge/catkin_ws/devel/setup.bash
-```
-
-#### Prepare ROS 2 environment:
+When you want to run some of the ROS packages you will have to set your ROS environment accordingly in every terminal that you use:
 
 ```sh
     source ./install/setup.bash

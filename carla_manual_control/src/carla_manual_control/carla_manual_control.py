@@ -30,6 +30,7 @@ from __future__ import print_function
 
 import datetime
 import math
+import time
 from threading import Thread
 
 import numpy
@@ -62,9 +63,10 @@ except ImportError:
 
 import ros_compatibility as roscomp
 from ros_compatibility.node import CompatibleNode
-from ros_compatibility.qos import QoSProfile, DurabilityPolicy, QoSProfileSubscriber
+from ros_compatibility.qos import QoSProfile, DurabilityPolicy, QoSProfileSubscriber, QoSProfilePublisher
 
 from carla_msgs.msg import CarlaStatus
+from carla_msgs.msg import CarlaSynchronizationWindow
 from carla_msgs.msg import CarlaEgoVehicleInfo
 from carla_msgs.msg import CarlaEgoVehicleStatus
 from carla_msgs.msg import CarlaEgoVehicleControl
@@ -94,17 +96,24 @@ class ManualControl(CompatibleNode):
         self.hud = HUD(self.role_name, resolution['width'], resolution['height'], self)
         self.controller = KeyboardControl(self.role_name, self.control_priority, self.hud, self)
 
+        # don't make the quque too large, as we don't want to have bursts of x frames arriving at once
+        # in case the system is not able to keep up
         self.image_subscriber = self.new_subscription(
             Image, "/carla/{}/rgb_view/image".format(self.role_name),
-            self.on_view_image, qos_profile=10)
+            self.on_view_image, qos_profile=QoSProfileSubscriber(1))
 
         self.collision_subscriber = self.new_subscription(
             CarlaCollisionEvent, "/carla/{}/collision".format(self.role_name),
-            self.on_collision, qos_profile=10)
+            self.on_collision, qos_profile=QoSProfileSubscriber(10))
 
         self.lane_invasion_subscriber = self.new_subscription(
             CarlaLaneInvasionEvent, "/carla/{}/lane_invasion".format(self.role_name),
-            self.on_lane_invasion, qos_profile=10)
+            self.on_lane_invasion, qos_profile=QoSProfileSubscriber(10))
+
+        self.synchronization_window_publisher = self.new_publisher(
+            CarlaSynchronizationWindow,
+            "/carla/synchronization_window",
+            qos_profile=QoSProfilePublisher(5))
 
     def on_collision(self, data):
         """
@@ -141,6 +150,16 @@ class ManualControl(CompatibleNode):
         array = array[:, :, ::-1]
         self._surface = pygame.surfarray.make_surface(array.swapaxes(0, 1))
 
+    def publish_synchronization_window(self):
+        """
+        publish a synchronization window to advance the simulation in synchronous mode
+        """
+        if self.controller.last_carla_status is not None:
+            msg = CarlaSynchronizationWindow()
+            simulation_window_advance = 0.2  # seconds
+            msg.synchronization_window_target_game_time = self.controller.last_carla_status.header.stamp.sec + self.controller.last_carla_status.header.stamp.nanosec*1e-9 + simulation_window_advance
+            self.synchronization_window_publisher.publish(msg)
+
     def render(self, game_clock, display):
         """
         render the current image
@@ -150,7 +169,7 @@ class ManualControl(CompatibleNode):
         if do_quit:
             return
         self.hud.tick(game_clock)
-
+            
         if self._surface is not None:
             display.blit(self._surface, (0, 0))
         self.hud.render(display)
@@ -175,27 +194,24 @@ class KeyboardControl(object):
         self._control.control_priority = control_priority
         self._steer_cache = 0.0
 
-        fast_qos = QoSProfile(depth=10)
-        fast_latched_qos = QoSProfile(depth=10, durability=DurabilityPolicy.TRANSIENT_LOCAL)
-
         self.vehicle_control_manual_override = True
+        self.last_carla_status = None
 
-        # todo: autopilot service not working yet with carla native ROS2 support
         self.auto_pilot_enable_publisher = self.node.new_publisher(
             Bool,
             "/carla/{}/enable_autopilot".format(self.role_name),
-            qos_profile=fast_qos)
+            qos_profile=QoSProfilePublisher(1))
 
         self.vehicle_control_publisher = self.node.new_publisher(
             CarlaEgoVehicleControl,
             "/carla/{}/vehicle_control_cmd".format(self.role_name),
-            qos_profile=fast_qos)
+            qos_profile=QoSProfilePublisher(1))
 
         self.carla_status_subscriber = self.node.new_subscription(
             CarlaStatus,
             "/carla/status",
             self._on_new_carla_frame,
-            qos_profile=10)
+            qos_profile=QoSProfileSubscriber(1))
 
         self.set_autopilot(self._autopilot_enabled)
 
@@ -261,6 +277,7 @@ class KeyboardControl(object):
         As CARLA only processes one vehicle control command per tick,
         send the current from within here (once per frame)
         """
+        self.last_carla_status = data
         if not self._autopilot_enabled and self.vehicle_control_manual_override:
             try:
                 self.vehicle_control_publisher.publish(self._control)
@@ -317,14 +334,14 @@ class HUD(object):
 
         self.vehicle_status_subscriber = node.new_subscription(
             CarlaEgoVehicleStatus, "/carla/{}/vehicle_status".format(self.role_name),
-            self.vehicle_status_updated, qos_profile=10)
+            self.vehicle_status_updated, qos_profile=QoSProfileSubscriber(1))
 
         self.vehicle_info = CarlaEgoVehicleInfo()
         self.vehicle_info_subscriber = node.new_subscription(
             CarlaEgoVehicleInfo,
             "/carla/{}/vehicle_info".format(self.role_name),
             self.vehicle_info_updated, 
-            qos_profile=QoSProfile(depth=10, durability=DurabilityPolicy.TRANSIENT_LOCAL))
+            qos_profile=QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL))
 
         self.x, self.y, self.z = 0, 0, 0
         self.yaw = 0
@@ -336,13 +353,13 @@ class HUD(object):
             NavSatFix,
             "/carla/{}/gnss".format(self.role_name),
             self.gnss_updated,
-            qos_profile=10)
+            qos_profile=QoSProfileSubscriber(1))
 
         self.odometry_subscriber = node.new_subscription(
             Odometry,
             "/carla/{}/odometry".format(self.role_name),
             self.odometry_updated,
-            qos_profile=10
+            qos_profile=QoSProfileSubscriber(1)
         )
 
         self.carla_status = CarlaStatus()
@@ -350,7 +367,7 @@ class HUD(object):
             CarlaStatus,
             "/carla/status",
             self.carla_status_updated,
-            qos_profile=10)
+            qos_profile=QoSProfileSubscriber(1))
 
     def tick(self, clock):
         """
@@ -627,11 +644,26 @@ def main(args=None):
         spin_thread = Thread(target=manual_control_node.spin)
         spin_thread.start()
 
+        desired_fps = 20.0
+        desired_time_increment = 1. / desired_fps  # 20 FPS target
+        now_s = time.time()
         while roscomp.ok():
-            clock.tick_busy_loop(60)
+            last_s = now_s
+            now_s = time.time()
+            delta_s = now_s - last_s
+            clock.tick()
             if manual_control_node.render(clock, display):
                 return
+           
+            if ( delta_s < desired_time_increment ):
+                sleep_time =  desired_time_increment - delta_s
+                time.sleep( sleep_time )
+
+            # don't let the simulation run away too far in synchronous mode, otherwise our tick_busy_loop above waits to slow down the game, 
+            # but the CARLA doesn't know that we want it hurry too much
+            manual_control_node.publish_synchronization_window()
             pygame.display.flip()
+
     except KeyboardInterrupt:
         roscomp.loginfo("User requested shut down.")
     finally:

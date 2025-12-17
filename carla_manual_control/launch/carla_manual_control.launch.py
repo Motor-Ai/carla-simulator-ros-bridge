@@ -23,6 +23,9 @@ def generate_launch_description():
             emulate_tty=True,
             parameters=[
                 {
+                    'use_sim_time': True
+                },
+                {
                     'role_name': launch.substitutions.LaunchConfiguration('role_name')
                 },
                 {

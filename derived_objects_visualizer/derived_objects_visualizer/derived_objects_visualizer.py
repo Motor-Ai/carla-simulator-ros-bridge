@@ -3,7 +3,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSDurabilityPolicy, QoSProfile, QoSReliabilityPolicy
 from message_filters import Subscriber
-from derived_object_msgs.msg import ObjectWithCovarianceArray, ObjectWithCovariance
+from derived_object_msgs.msg import ObjectArray, Object
 from std_msgs.msg import ColorRGBA
 from geometry_msgs.msg import Point
 from visualization_msgs.msg import Marker, MarkerArray
@@ -15,8 +15,10 @@ class DerivedObjectsVisualizer(Node):
         super().__init__('derived_objects_visualizer')
 
         self.declare_parameter("objects_topic", value="/carla/objects_with_covariance")
+        self.declare_parameter("lifetime_seconds", value=1.0)
+        self.lifetime = self.get_parameter("lifetime_seconds")
 
-        self.object_subscription = Subscriber(self, ObjectWithCovarianceArray, self.get_parameter(
+        self.object_subscription = Subscriber(self, ObjectArray, self.get_parameter(
             "objects_topic").get_parameter_value().string_value, qos_profile=self.get_qos_objects())
         self.object_subscription.registerCallback(self.object_callback)
 
@@ -24,9 +26,9 @@ class DerivedObjectsVisualizer(Node):
             "objects_topic").get_parameter_value().string_value + '/marker_objects', qos_profile=self.get_qos_marker_objects())
 
     def get_qos_objects(self):
-        # volatile, best_effort should be ok for sensor data input
+        # transient local to support also environment objects
         qos = QoSProfile(depth=1)
-        qos.durability = QoSDurabilityPolicy.VOLATILE
+        qos.durability = QoSDurabilityPolicy.TRANSIENT_LOCAL
         qos.reliability = QoSReliabilityPolicy.BEST_EFFORT
         return qos
 
@@ -46,22 +48,22 @@ class DerivedObjectsVisualizer(Node):
         color.r = 1.0
         color.g = 1.0
         color.b = 1.0
-        if object.classification == ObjectWithCovariance.CLASSIFICATION_PEDESTRIAN:
+        if object.classification == Object.CLASSIFICATION_PEDESTRIAN:
             # yellow
             color.r = 1.0
             color.g = 1.0
             color.b = 0.0
-        elif object.classification == ObjectWithCovariance.CLASSIFICATION_BIKE:
+        elif object.classification == Object.CLASSIFICATION_BIKE:
             # orange
             color.r = 1.0
             color.g = 0.65
             color.b = 0.0
-        elif (object.classification == ObjectWithCovariance.CLASSIFICATION_CAR) or (object.classification == ObjectWithCovariance.CLASSIFICATION_TRUCK) or (object.classification == ObjectWithCovariance.CLASSIFICATION_MOTORCYCLE) or (object.classification == ObjectWithCovariance.CLASSIFICATION_OTHER_VEHICLE):
+        elif (object.classification == Object.CLASSIFICATION_CAR) or (object.classification == Object.CLASSIFICATION_TRUCK) or (object.classification == Object.CLASSIFICATION_MOTORCYCLE) or (object.classification == Object.CLASSIFICATION_OTHER_VEHICLE):
             # blue
             color.r = 0.0
             color.g = 0.0
             color.b = 1.0
-        elif (object.classification == ObjectWithCovariance.CLASSIFICATION_SIGN) or (object.classification == ObjectWithCovariance.CLASSIFICATION_BARRIER):
+        elif (object.classification == Object.CLASSIFICATION_SIGN) or (object.classification == Object.CLASSIFICATION_BARRIER):
             # red
             color.a = 0.1
             color.r = 1.0
@@ -70,6 +72,7 @@ class DerivedObjectsVisualizer(Node):
         return color
 
     def object_callback(self, msg):
+        self.get_logger().info("object_callback...")
         marker_array = MarkerArray()
 
         for object in msg.objects:
@@ -78,7 +81,7 @@ class DerivedObjectsVisualizer(Node):
             marker.header = object.header
             marker.ns = "Objects"
             marker.type = Marker.CUBE
-            marker.lifetime = rclpy.duration.Duration(seconds=1.).to_msg()
+            marker.lifetime = rclpy.duration.Duration(seconds=self.lifetime).to_msg()
 
             marker.id = object.id
             marker.pose.position.x = object.pose.pose.position.x
@@ -104,7 +107,7 @@ class DerivedObjectsVisualizer(Node):
 
             marker_array.markers.append(marker)
 
-            if (object.classification != ObjectWithCovariance.CLASSIFICATION_SIGN) and (object.classification != ObjectWithCovariance.CLASSIFICATION_BARRIER):
+            if (object.classification != Object.CLASSIFICATION_SIGN) and (object.classification != Object.CLASSIFICATION_BARRIER):
                 # Heading
                 marker = Marker()
                 marker.header = object.header

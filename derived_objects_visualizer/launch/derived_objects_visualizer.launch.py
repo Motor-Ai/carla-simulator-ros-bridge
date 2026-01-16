@@ -8,7 +8,11 @@ def generate_launch_description():
     ld = launch.LaunchDescription([
         launch.actions.DeclareLaunchArgument(
             name='objects_topic',
-            default_value='/carla/objects_with_covariance'
+            default_value='/carla/objects'
+        ),
+        launch.actions.DeclareLaunchArgument(
+            name='lifetime_seconds',
+            default_value='1.0'
         ),
         launch_ros.actions.Node(
             package='derived_objects_visualizer',
@@ -19,6 +23,9 @@ def generate_launch_description():
             parameters=[
                 {
                     'objects_topic': launch.substitutions.LaunchConfiguration('objects_topic')
+                },
+                {
+                    'lifetime_seconds': launch.substitutions.LaunchConfiguration('lifetime_seconds')
                 }
             ]
         )

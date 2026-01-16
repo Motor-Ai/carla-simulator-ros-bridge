@@ -19,6 +19,11 @@ def generate_launch_description():
             default_value='2',
             description='Time to wait for a successful connection to the CARLA server'
         ),
+        launch.actions.DeclareLaunchArgument(
+            name='fixed_delta_seconds',
+            default_value='0.00',
+            description='Fixed delta seconds for CARLA synchronous mode'
+        ),
         launch_ros.actions.Node(
             package='carla_ros_client',
             executable='client',
@@ -38,7 +43,10 @@ def generate_launch_description():
                 },
                 {
                     'timeout': launch.substitutions.LaunchConfiguration('timeout')
-                }
+                },
+                {
+                    'fixed_delta_seconds': launch.substitutions.LaunchConfiguration('fixed_delta_seconds')
+                },
             ]
         )
     ])

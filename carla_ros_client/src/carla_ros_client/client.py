@@ -40,6 +40,7 @@ def main(args=None):
     parameters['host'] = actor_factory.get_param('host', 'localhost')
     parameters['port'] = actor_factory.get_param('port', 2000)
     parameters['timeout'] = actor_factory.get_param('timeout', 2)
+    parameters['fixed_delta_seconds'] = actor_factory.get_param('fixed_delta_seconds', 0.0)
 
     actor_factory.loginfo("Trying to connect to {host}:{port}".format(
         host=parameters['host'], port=parameters['port']))
@@ -51,8 +52,12 @@ def main(args=None):
         carla_client.set_timeout(parameters['timeout'])
 
         carla_world = carla_client.get_world()
+        carla_settings = carla_world.get_settings()
+        carla_settings.fixed_delta_seconds = parameters['fixed_delta_seconds']
 
         actor_factory.start(carla_world)
+
+        carla_world.apply_settings(carla_settings)
 
         actor_factory.spin()
 

@@ -324,7 +324,13 @@ class DerivedObjectsVisualizer(Node):
                 marker.scale.z = 0.1
 
             # move the object marker up by half of its height, so that the position corresponds to the center of the object base and not to its center
-            marker.pose.position.z = marker.pose.position.z + marker.scale.z/2.0
+            # seems not to be required for pedestrians
+            if (object.classification == Object.CLASSIFICATION_BIKE) or \
+                (object.classification == Object.CLASSIFICATION_CAR) or \
+                (object.classification == Object.CLASSIFICATION_TRUCK) or \
+                (object.classification == Object.CLASSIFICATION_MOTORCYCLE) or \
+                (object.classification == Object.CLASSIFICATION_OTHER_VEHICLE):
+              marker.pose.position.z = marker.pose.position.z + marker.scale.z/2.0
 
             marker.color = self.get_object_color(object, city_object_label)
 

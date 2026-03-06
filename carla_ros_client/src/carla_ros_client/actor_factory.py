@@ -47,15 +47,16 @@ class ActorFactory(CompatibleNode):
 
         self.thread = Thread(target=self._update_thread)
 
-    def start(self, carla_world):
+    def start(self, carla_client):
         """
         Initialize the factory and start the update thread
-        :param carla_world: carla world object
-        :type carla_world: carla.World
+        :param carla_client: carla client object
+        :type carla_client: carla.Client
         """
         self.loginfo("Starting...")
         
-        self.carla_world = carla_world
+        self.carla_client = carla_client
+        self.carla_world = self.carla_client.get_world()
 
         # create initially existing actors
         self.update_available_objects()
@@ -84,9 +85,11 @@ class ActorFactory(CompatibleNode):
         """
         execution loop for async mode actor discovery
         """
-        while not self.shutdown.is_set():
-            time.sleep(ActorFactory.TIME_BETWEEN_UPDATES)
-            self.carla_world.wait_for_tick()
+        while not self.shutdown.is_set() and roscomp.ok():
+            if self.carla_world.get_settings().synchronous_mode:
+                self.carla_world.tick()
+            else:
+                self.carla_world.wait_for_tick()
             self.update_available_objects()
 
     def update_available_objects(self):

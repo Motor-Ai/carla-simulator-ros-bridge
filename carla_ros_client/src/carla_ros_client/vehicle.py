@@ -49,7 +49,7 @@ class Vehicle(Actor):
             self.get_topic_prefix() + "/enable_autopilot",
             self.enable_autopilot_updated,
             qos_profile=10)
-
+        
     def destroy(self):
         """
         Function (override) to destroy this object.
@@ -70,6 +70,13 @@ class Vehicle(Actor):
         :type enable_auto_pilot: std_msgs.Bool
         :return:
         """
-        self.node.logdebug("Ego vehicle: Set autopilot to {}".format(enable_auto_pilot.data))
+        if enable_auto_pilot.data:
+            if self.carla_actor.get_world().get_settings().synchronous_mode:
+                # ensure traffic manager is in synchronous mode as well, otherwise the autopilot will not work correctly
+                self.node.carla_client.get_trafficmanager().set_synchronous_mode(True)
+            self.node.loginfo("vehicle[{}]: Autopilot enabled".format(self.uid))
+        else:
+            self.node.loginfo("vehicle[{}]: Autopilot disabled".format(self.uid))
+        
         self.carla_actor.set_autopilot(enable_auto_pilot.data)
 

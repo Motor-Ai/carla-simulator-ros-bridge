@@ -18,9 +18,11 @@ finally ask for a random one to the spawn service.
 import json
 import math
 import os
+import time
 
 from transforms3d.euler import euler2quat
 
+from ros_compatibility.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 import ros_compatibility as roscomp
 from ros_compatibility.exceptions import *
 from ros_compatibility.node import CompatibleNode
@@ -111,11 +113,23 @@ class CarlaSpawnObjects(CompatibleNode):
 
         if self.spawn_sensors_only is True:
             # get vehicle id from topic /carla/actor_list for all vehicles listed in config file
-            actor_info_list = self.wait_for_message("/carla/actor_list", CarlaActorList)
-            for vehicle in vehicles:
-                for actor_info in actor_info_list.actors:
-                    if actor_info.type == vehicle["type"] and actor_info.rolename == vehicle["id"]:
-                        vehicle["carla_id"] = actor_info.id
+            found_all_ids = False
+            while not found_all_ids and roscomp.ok():
+              self.loginfo("Waiting to receive the carla ID for vehicles ...")
+              actor_info_list = self.wait_for_message("/carla/actor_list", CarlaActorList, qos_profile=
+                                                      QoSProfile(1, durability=DurabilityPolicy.TRANSIENT_LOCAL, reliability=ReliabilityPolicy.RELIABLE))
+              self.loginfo("Actor list of size {} received.".format(len(actor_info_list.actors)))
+              found_all_ids = True
+              for vehicle in vehicles:
+                  if "carla_id" not in vehicle:
+                    for actor_info in actor_info_list.actors:
+                        if actor_info.type == vehicle["type"] and actor_info.rolename == vehicle["id"]:
+                            vehicle["carla_id"] = actor_info.id
+                            self.loginfo("Received carla ID for vehicle {}: {}".format(vehicle["id"], vehicle["carla_id"]))
+                  if "carla_id" not in vehicle:
+                    found_all_ids = False
+                    self.logwarn("Did not receive yet the carla ID for vehicle {}, waiting...".format(vehicle["id"]))
+                    time.sleep(1.0)
 
         self.setup_vehicles(vehicles)
         self.loginfo("All objects spawned.")

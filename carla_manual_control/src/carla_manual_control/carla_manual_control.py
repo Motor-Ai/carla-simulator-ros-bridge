@@ -323,7 +323,7 @@ class HUD(object):
         self.vehicle_info_subscriber = node.new_subscription(
             CarlaEgoVehicleInfo,
             "/carla/{}/vehicle_info".format(self.role_name),
-            self.vehicle_info_updated, 
+            self.vehicle_info_updated,
             qos_profile=QoSProfile(depth=10, durability=DurabilityPolicy.TRANSIENT_LOCAL))
 
         self.x, self.y, self.z = 0, 0, 0
@@ -416,10 +416,11 @@ class HUD(object):
         x, y, z = self.x, self.y, self.z
         yaw = self.yaw
 
-        heading = 'N' if abs(yaw) < 89.5 else ''
-        heading += 'S' if abs(yaw) > 90.5 else ''
-        heading += 'E' if 179.5 > yaw > 0.5 else ''
-        heading += 'W' if -0.5 > yaw > -179.5 else ''
+        # In ROS we have ENU system with 0° being the East direction
+        heading = 'N' if 179.5 > yaw > 0.5 else ''
+        heading += 'S' if -0.5 > yaw > -179.5 else ''
+        heading += 'E' if abs(yaw) < 89.5 else ''
+        heading += 'W' if abs(yaw) > 90.5 else ''
         fps = 0
 
         time = str(datetime.timedelta(seconds=self.node.get_time()))[:10]

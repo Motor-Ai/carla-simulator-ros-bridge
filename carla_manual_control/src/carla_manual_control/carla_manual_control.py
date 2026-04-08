@@ -197,15 +197,21 @@ class KeyboardControl(object):
             self._on_new_carla_frame,
             qos_profile=10)
 
+        self.manual_override_enable_subscriber = self.node.new_subscription(
+            Bool,
+            "/carla/{}/enable_manual_control".format(self.role_name),
+            self._on_enable_manual_control,
+            qos_profile=10)
+
         self.set_autopilot(self._autopilot_enabled)
 
-        self.set_vehicle_control_manual_override(
-            self.vehicle_control_manual_override)  # disable manual override
+        self.set_vehicle_control_manual_override(True)
 
     def set_vehicle_control_manual_override(self, enable):
         """
         Set the manual control override
         """
+        self.vehicle_control_manual_override = enable
         self.hud.notification('Set vehicle control manual override to: {}'.format(enable))
         self.hud.manual_control_override_updated(enable)
 
@@ -232,8 +238,7 @@ class KeyboardControl(object):
                                           pygame.key.get_mods() & KMOD_SHIFT):
                     self.hud.help.toggle()
                 elif event.key == K_b:
-                    self.vehicle_control_manual_override = not self.vehicle_control_manual_override
-                    self.set_vehicle_control_manual_override(self.vehicle_control_manual_override)
+                    self.set_vehicle_control_manual_override(not self.vehicle_control_manual_override)
                 if event.key == K_q:
                     self._control.gear = 1 if self._control.reverse else -1
                 elif event.key == K_m:
@@ -253,6 +258,19 @@ class KeyboardControl(object):
         if not self._autopilot_enabled and self.vehicle_control_manual_override:
             self._parse_vehicle_keys(pygame.key.get_pressed(), clock.get_time())
             self._control.reverse = self._control.gear < 0
+
+    def _on_enable_manual_control(self, msg: Bool):
+        """
+        callback to allow to enable/disable publishing of manual control commands
+        from this node
+
+        Usually one is able to use the control_priority parameter to make CARLA decide which control
+        command to obey. But such only works if ALL control command sender send a command on every tick.
+
+        Thererfore, this function allows to disable this nodes control output for extern participants. For sure,
+        the user can just press the correct key on the keyboard to toggle this again.
+        """
+        self.set_vehicle_control_manual_override(msg.data)
 
     def _on_new_carla_frame(self, data):
         """

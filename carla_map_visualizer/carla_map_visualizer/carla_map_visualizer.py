@@ -6,10 +6,12 @@ from geometry_msgs.msg import Point
 import ad_map_access as ad
 from std_msgs.msg import ColorRGBA
 
+import xml.etree.ElementTree as ET
+
 class CarlaMapVisualizer(Node):
     def __init__(self):
         super().__init__('carla_map_visualizer')
-        
+
         # Colors: [R, G, B, A]
         self.COLOR_NORMAL = ColorRGBA(r=0.0, g=0.5, b=1.0, a=0.8)       # Blue
         self.COLOR_INTERSECTION = ColorRGBA(r=0.0, g=1.0, b=0.0, a=0.8) # Green
@@ -22,23 +24,45 @@ class CarlaMapVisualizer(Node):
             CarlaWorldInfo,
             '/carla/world_info',
             self.world_info_callback,
-            rclpy.qos.QoSProfile(depth=1, 
+            rclpy.qos.QoSProfile(depth=1,
                                  durability=rclpy.qos.DurabilityPolicy.TRANSIENT_LOCAL))
-        
+
         self.marker_pub = self.create_publisher(
-            MarkerArray, '/carla/world_info/lane_markers', 
-            rclpy.qos.QoSProfile(depth=1, 
+            MarkerArray, '/carla/world_info/lane_markers',
+            rclpy.qos.QoSProfile(depth=1,
                 durability=rclpy.qos.DurabilityPolicy.TRANSIENT_LOCAL,
                 reliability=rclpy.qos.ReliabilityPolicy.RELIABLE))
         self.get_logger().info("Carla Map Visualizer ready.")
 
+
+    def remove_offset_from_opendrive(self, opendrive_str):
+        # Parse the XML string into an ElementTree
+        root = ET.fromstring(opendrive_str)
+
+        # Find the header, then find and remove the offset tag
+        header = root.find('header')
+        if header is not None:
+            offset = header.find('offset')
+            if offset is not None:
+                header.remove(offset)
+
+        # Convert the XML tree back to a string
+        cleaned_xml = ET.tostring(root, encoding='unicode', xml_declaration=True)
+        return cleaned_xml
+
+
     def world_info_callback(self, msg):
         if not msg.opendrive:
             return
-            
+
+        # in case the OpenDrive content contains an offset, we need to remove it since CARLA is using this offset
+        # only for the GPS Sensor, but the actual map data is in the ENU frame without the offset applied.
+        #  If we don't remove the offset, the displayed map will be misaligned.
+        clean_opendrive = self.remove_offset_from_opendrive(msg.opendrive)
+
         self.get_logger().info("Processing map...")
         if not ad.map.access.initFromOpenDriveContent(
-            msg.opendrive, 0.2, 
+            clean_opendrive, 0.2,
             ad.map.intersection.IntersectionType.PriorityToRight,
             ad.map.landmark.TrafficLightType.UNKNOWN):
             self.get_logger().error("Failed to initialize map from OpenDrive content.")
@@ -55,7 +79,7 @@ class CarlaMapVisualizer(Node):
         marker.type = Marker.LINE_STRIP
         marker.action = Marker.ADD
         marker.scale.x = 0.15 # Line thickness
-        
+
         # Color logic based on LaneType
         if lane_type == ad.map.lane.LaneType.INTERSECTION:
             marker.color = self.COLOR_INTERSECTION
@@ -74,16 +98,16 @@ class CarlaMapVisualizer(Node):
             enu = ad.map.point.toENU(pt)
             ros_pt = Point(x=enu.x.mENUCoordinate, y=enu.y.mENUCoordinate, z=enu.z.mENUCoordinate)
             marker.points.append(ros_pt)
-            
+
         return marker
 
     def publish_lanes(self):
         marker_array = MarkerArray()
         all_lanes = ad.map.lane.getLanes()
-        
+
         for lane_id in all_lanes:
             lane = ad.map.lane.getLane(lane_id)
-            
+
             # Create markers for both left and right boundaries
             marker_array.markers.append(
                 self.create_line_marker(lane_id.mLaneId, lane.type, lane.edge_left.ecef_points, "left")

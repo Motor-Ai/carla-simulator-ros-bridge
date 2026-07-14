@@ -21,7 +21,6 @@ setup(
     maintainer_email='carla.simulator@gmail.com',
     description='CARLA manual control for ROS2 bridge',
     license='MIT',
-    tests_require=['pytest'],
     entry_points={
         'console_scripts': ['carla_manual_control = carla_manual_control.carla_manual_control:main'],
     },

@@ -24,7 +24,6 @@ setup(
     maintainer_email='carla.simulator@gmail.com',
     description='CARLA spawn_objects for ROS2 bridge',
     license='MIT',
-    tests_require=['pytest'],
     entry_points={
         'console_scripts': [
             'carla_spawn_objects = src.carla_spawn_objects.carla_spawn_objects:main',

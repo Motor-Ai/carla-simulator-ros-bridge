@@ -1,6 +1,6 @@
-project(carla_ad_demo)
-
 cmake_minimum_required(VERSION 3.5)
+
+project(carla_ad_demo)
 
 find_package(ament_cmake REQUIRED)
 

@@ -1,6 +1,6 @@
-project(carla_waypoint_types)
-
 cmake_minimum_required(VERSION 3.5)
+
+project(carla_waypoint_types)
 
 if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD_REQUIRED ON)

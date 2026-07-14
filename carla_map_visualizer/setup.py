@@ -20,7 +20,6 @@ setup(
     maintainer_email='carla.simulator@gmail.com',
     description='CARLA Map Visualizer',
     license='MIT',
-    tests_require=['pytest'],
     entry_points={
         'console_scripts': [
             f'carla_map_visualizer = {package_name}.carla_map_visualizer_main:main',

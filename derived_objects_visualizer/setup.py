@@ -20,7 +20,6 @@ setup(
     maintainer_email='carla.simulator@gmail.com',
     description='DerivedObjects Visualizer',
     license='MIT',
-    tests_require=['pytest'],
     entry_points={
         'console_scripts': [
             f'derived_objects_visualizer = {package_name}.derived_objects_visualizer_main:main',

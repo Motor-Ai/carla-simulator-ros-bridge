@@ -23,7 +23,6 @@ setup(
     maintainer_email='carla.simulator@gmail.com',
     description='CARLA waypoint publisher for ROS2 bridge',
     license='MIT',
-    tests_require=['pytest'],
     entry_points={
         'console_scripts': ['carla_waypoint_publisher = carla_waypoint_publisher.carla_waypoint_publisher:main'],
     },

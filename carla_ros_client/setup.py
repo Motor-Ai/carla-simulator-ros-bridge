@@ -19,7 +19,6 @@ setup(
     maintainer_email='carla.simulator@gmail.com',
     description='CARLA ROS2 client',
     license='MIT',
-    tests_require=['pytest'],
     entry_points={
         'console_scripts': ['client = carla_ros_client.client:main'],
     },

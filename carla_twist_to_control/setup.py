@@ -21,7 +21,6 @@ setup(
     maintainer_email='carla.simulator@gmail.com',
     description='CARLA twist to control for ROS2 bridge',
     license='MIT',
-    tests_require=['pytest'],
     entry_points={
         'console_scripts': ['carla_twist_to_control = carla_twist_to_control.carla_twist_to_control:main'],
     },

@@ -20,6 +20,5 @@ setup(
     maintainer_email='carla.simulator@gmail.com',
     description='CARLA common providing transforms for ROS2 bridge',
     license='MIT',
-    tests_require=['pytest'],
     package_dir={'': 'src'},
 )

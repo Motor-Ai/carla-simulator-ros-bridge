@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.3)
+cmake_minimum_required(VERSION 3.5)
 project(pcl_recorder)
 
 # Default to C++14
@@ -8,6 +8,17 @@ endif()
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
+
+if(POLICY CMP0074)
+  # let find_package() honor <PackageName>_ROOT (e.g. PCL_ROOT), instead of a warning + silently
+  # ignoring it; this project's minimum required CMake version predates the policy's introduction.
+  cmake_policy(SET CMP0074 NEW)
+endif()
+if(POLICY CMP0144)
+  # same as CMP0074, but for the upper-case <PACKAGENAME>_ROOT spelling that pcl_conversions'
+  # own FindFLANN.cmake (pulled in transitively below) uses for FLANN_ROOT.
+  cmake_policy(SET CMP0144 NEW)
 endif()
 
 find_package(ament_cmake REQUIRED)

@@ -25,7 +25,7 @@
 #include <tf2/utils.h>
 
 #include <OgreCamera.h>
-#include <OgreVector3.h>
+#include <OgreVector.h>
 #include <OgreSceneNode.h>
 #include <rviz_common/view_manager.hpp>
 #include "rviz_common/display_context.hpp"

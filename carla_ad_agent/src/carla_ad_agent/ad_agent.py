@@ -202,14 +202,19 @@ def main(args=None):
     try:
         executor = roscomp.executors.MultiThreadedExecutor()
         controller = CarlaAdAgent()
-        executor.add_node(controller)
+        if not executor.add_node(controller):
+            controller.get_logger().error("Can't add ad_agent controller to executor")
 
         roscomp.on_shutdown(controller.emergency_stop)
 
         update_timer = controller.new_timer(
             0.05, lambda timer_event=None: controller.run_step())
 
-        controller.spin()
+        # spin the executor directly (matching every other MultiThreadedExecutor user in this
+        # tree, e.g. derived_objects_visualizer_main.py) - controller.spin() goes through
+        # rclpy.spin(node, executor) instead, which never actually served this node's timer in
+        # practice, so run_step() (and therefore /speed_command) never fired.
+        executor.spin()
 
     except (ROSInterruptException, ROSException) as e:
         if roscomp.ok():

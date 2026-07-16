@@ -188,6 +188,15 @@ class LocalPlanner(CompatibleNode):
             self._control_cmd_publisher.publish(control_msg)
 
     def emergency_stop(self):
+        # publish an explicit "no target" marker (rather than simply going silent) so consumers of
+        # next_target can immediately tell "local_planner has nothing to drive toward right now"
+        # apart from "local_planner just hasn't ticked yet" - this fires whenever emergency_stop is
+        # invoked (empty queue, missing odometry, target_speed == 0, or shutdown).
+        no_target_msg = Marker()
+        no_target_msg.header.frame_id = "map"
+        no_target_msg.action = Marker.DELETE
+        self._target_pose_publisher.publish(no_target_msg)
+
         control_msg = CarlaEgoVehicleControl()
         control_msg.control_priority = self.control_priority
         if self._current_header:
